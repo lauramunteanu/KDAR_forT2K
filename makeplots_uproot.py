@@ -1,4 +1,5 @@
 import uproot as up
+import csv
 import warnings
 import matplotlib.pyplot as plt
 import numpy as np
@@ -17,6 +18,34 @@ def Warn(string):
 
 def Err(string):
     print("\033[91m[ERROR]\033[0m :: ", string)
+
+def Print(string):
+    print("\033[92m[OUTPUT]\033[0m :: ", string)
+
+try:
+    from numpy.linalg import inv
+except ImportError:
+    Err("NumPy matrix inversion not available. Cannot run chi2 calculation")
+
+
+def chi2_calc(evis, xsec, covar, pred):
+    # Need to apply a mask to avoid low/zero count bins,
+    # select Evis between 50 & 135 MeV
+    mask = [x >= 45 and x < 125 for x in evis]
+    nbins = sum(mask)
+    diffs = [(x-p) for x, p, m in zip(xsec, pred, mask) if m]
+    covar_temp = [[x for x, m2 in zip(row, mask) if m2] for row, m1 in zip(covar, mask) if m1]
+    covar_inv = inv(covar_temp)
+    chi2 = sum([d1*covar_inv[i, j]*d2 for i, d1 in enumerate(diffs) for j, d2 in enumerate(diffs)])
+    return chi2, nbins
+
+def read_in_covar_matrix(filename):
+    covar = [[None]*26 for _ in range(26)]
+    for i, j, v in list(csv.reader(open(filename)))[1:]:
+        i, j, v = int(i), int(j), float(v)
+        covar[i][j] = v
+    return covar
+
 
 def plot_flattree_diff_xsec(filename: str, label: str, color: str, bin_edges, linestyle = ''):
     if(linestyle == ''):
@@ -111,6 +140,9 @@ def makeMCplot(ax, MC_sample, MC_label, color, data_points, bin_edges):
                 Warn("Divide by zero encountered in ratio plot")    
     ax.step(mc_centers, ratio, color=color, linestyle='-',where='mid')
 
+    return mc_contents
+    
+
 
 
 
@@ -122,7 +154,7 @@ gs = gridspec.GridSpec(2, 1, height_ratios=[3, 1], hspace=0.05)
 ax_main = fig.add_subplot(gs[0])
 ax_ratio = fig.add_subplot(gs[1], sharex=ax_main)
 
-format_axis(ax_main, ax_ratio, r"$E_{m}$", "MeV", r"Normalised $\frac{1}{\sigma}\frac{\text{d}\sigma}{\text{d}E_{m}}$", r"1 / MeV proton", "")
+format_axis(ax_main, ax_ratio, r"$E_{m}$", "MeV", r"Normalised $\frac{1}{\sigma}\frac{\text{d}\sigma}{\text{d}E_{m}}$", r"1 / MeV neutron", "")
 
 
 # ---------------------------------- Main plot ----------------------------------
@@ -131,22 +163,21 @@ plt.sca(ax_main)
 
 data_centers, data_contents, data_errors, bin_edges = plot_data_hist("kdar_analysis/kdar_emiss_hist.root")
 
-mc_samples = ["neutout/nuisflat_neut_5.4.0_JSPS_C.root", 
+mc_samples = ["neutout/nuisflat_neut_5.4.0_JSPS_C.root",
               "neutout/nuisflat_neut_5.4.0_JSPS_C_noFSI.root",
               "neutout/EDRMF/nuisflat_NEUT6_EDRMF_nominal_noFSI.root",
               "neutout/EDRMF/nuisflat_NEUT6_EDRMF_nominal.root",]
-              # "neutout/EDRMF/nuisflat_NEUT_6.0.2_EDRMF_paperSFshells.root",]
-            #   "neutout/RPWIA/nuisflat_NEUT_6.0.2_RPWIA_nominal_noFSI.root",
-            #   "neutout/RPWIA/nuisflat_NEUT_6.0.2_RPWIA_nominal.root",
-            #   "neutout/EDAIC/nuisflat_NEUT_6.0.2_EDAIC_nominal_noFSI.root",
-            #   "neutout/EDAIC/nuisflat_NEUT_6.0.2_EDAIC_nominal.root",]
-mc_names   = ["NEUT", "NEUT noFSI", "NEUT6.0.2 EDRMF noFSI", "NEUT6.0.2 EDRMF",]#"NEUT6.0.2 EDRMF paper shells", "NEUT6.0.2 RPWIA noFSI", "NEUT6.0.2 RPWIA", "NEUT6.0.2 EDAIC noFSI", "NEUT6.0.2 EDAIC"]
+
+mc_names   = ["NEUT", "NEUT noFSI", "NEUT6.0.2 EDRMF noFSI", "NEUT6.0.2 EDRMF",]
 mc_colors  = ["red", "blue", "orange", "purple"]#,"green", "lime", "pink", "green", "brown"]
 
+mc_counts = []
 for index, sample in enumerate(mc_samples):
     Log(f"Reading in: {sample}")
-    makeMCplot(ax_ratio, sample, mc_names[index], mc_colors[index], data_contents, bin_edges)
+    mc_counts_temp = makeMCplot(ax_ratio, sample, mc_names[index], mc_colors[index], data_contents, bin_edges)
+    mc_counts.append(mc_counts_temp)
 
+mc_counts = np.array(mc_counts)
 # ---------------------------------- Ratio plot ----------------------------------
 
 ## First two data points are 0, causes issues for ratio plot. 
@@ -164,16 +195,18 @@ ax_ratio.set_ylim(0,2)
 plt.setp(ax_main.get_xticklabels(), visible=False) 
 
 
-##################################
-# C12_Emiss_profile = np.loadtxt("rho_C12_neutron.txt")
-# C12_Emiss_profile = np.loadtxt("rho_C12_neutron_NEUTsf_EmShells.txt")
-# Em_n = C12_Emiss_profile[:,0]
-# rho_n = C12_Emiss_profile[:,1]
-# integral = np.trapz(rho_n, Em_n)
-# rho_n_scaled = 2*2.488923844830424 * rho_n / integral
+# Chi2 calculation
+xsec_vals = list(csv.reader(open("kdar_analysis/xsec.csv")))[1:]
+xsec_values = [float(x[2]) for x in xsec_vals]
+evis_vals = [float(x[1]) for x in xsec_vals]
+keys = ["stat", "energy", "birks", "generator"]
+covar_mats = {k: read_in_covar_matrix("kdar_analysis/covar_%s.csv" % k) for k in keys}
+total_covar = [[sum([covar_mats[k][i][j] for k in keys]) for j in range(26)] for i in range(26)]
 
-# ax_main.plot(Em_n, rho_n_scaled, color = 'red', label = r'Neutron total $\rho(E_{m})$', linestyle='dashed')
-# ax_main.set_xlim(right=120)
-###################################
+for index, sample_count in enumerate(mc_counts):
+    chi2, ndof = chi2_calc(evis_vals, xsec_values, total_covar, list([float(x) for x in sample_count]))
+    chi2_string = r"$\chi^{2} / N_{\text{dof}} "
+    Print(chi2_string + f"for {mc_names[index]} = {chi2:.2f}/{ndof}")
+
 
 plt.show()
