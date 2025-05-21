@@ -1,4 +1,5 @@
 import uproot as up
+import warnings
 import matplotlib.pyplot as plt
 import numpy as np
 from matplotlib import gridspec
@@ -8,18 +9,35 @@ plt.rcParams.update({
     "font.family": "serif",
     "font.serif": ["Computer Modern Roman"]})
 
+def Log(string):
+    print("\033[94m[LOG]\033[0m :: ", string)
+
+def Warn(string):
+    print("\033[93m[WARNING]\033[0m :: ", string)
+
+def Err(string):
+    print("\033[91m[ERROR]\033[0m :: ", string)
 
 def plot_flattree_diff_xsec(filename: str, label: str, color: str, bin_edges, linestyle = ''):
     if(linestyle == ''):
-        print("no linestyle give, using default")
+        Log("No linestyle given. Using default")
         linestyle = '-'
     infile = up.open(filename)
     mode = infile["FlatTree_VARS;1"]["cc"].array()
-    pdg = infile["FlatTree_VARS;1"]["pdg"].array()
+    Emiss_v = infile["FlatTree_VARS;1"]["Emiss"].array()
     Elep = 1000*infile["FlatTree_VARS;1"]["ELep"].array()
     Enu = 235.5
-    Ep = 1000*infile["FlatTree_VARS;1"]["E"].array()
     Mp = 938.27 
+
+    Ep, pdf = [], []
+    if("noFSI" in filename):
+        Ep = 1000*infile["FlatTree_VARS;1"]["E_vert"].array()
+        pdg = infile["FlatTree_VARS;1"]["pdg_vert"].array()
+
+    else:
+        Ep = 1000*infile["FlatTree_VARS;1"]["E"].array()
+        pdg = infile["FlatTree_VARS;1"]["pdg"].array()
+
     
     # XSec_scale_factor = max(infile["FlatTree_VARS;1"]["fScaleFactor"].array()) # Don't need this if we are normalising
     Emiss = []
@@ -30,7 +48,7 @@ def plot_flattree_diff_xsec(filename: str, label: str, color: str, bin_edges, li
                     Tp = Ep[index][particle] - Mp
                     Emiss_val = Enu - Elep[index] - Tp
                     Emiss.append(Emiss_val)
-                    # Emiss.append(1000*Emiss[index]) # This is the nuisflat Emiss def
+            # Emiss.append(1000*Emiss_v[index]) # This is the nuisflat Emiss def
 
 
     # Compute histogram and integral
@@ -47,8 +65,8 @@ def plot_flattree_diff_xsec(filename: str, label: str, color: str, bin_edges, li
 
     weights = np.full_like(Emiss, scale)
 
-    plt.hist(Emiss, bins=bin_edges, histtype='step', weights=weights, color=color,linewidth=1.5, label = label, linestyle=linestyle)
-    plt.legend(loc = "upper right")
+    plt.hist(Emiss, bins=bin_edges, histtype='step', weights=weights, color=color,linewidth=1.8, label = label, linestyle=linestyle)
+    plt.legend(loc = "upper right", fontsize=15)
 
     scaled_counts, _ = np.histogram(Emiss, bins=bin_edges, weights=weights)
     return bin_centers, scaled_counts
@@ -81,6 +99,19 @@ def format_axis(ax, ax_ratio, x_title: str, xunits: str, y_title: str, yunits: s
     ax.set_ylabel(f"{y_title} [" + yunits + "]", fontsize=20)
     ax.set_title(f"{title}", fontsize=20)
 
+def makeMCplot(ax, MC_sample, MC_label, color, data_points, bin_edges):
+    mc_centers, mc_contents = plot_flattree_diff_xsec(MC_sample, MC_label, color, bin_edges)
+    
+    ratio = -1
+    with warnings.catch_warnings(record=True) as w:
+        warnings.simplefilter("always")
+        ratio = mc_contents / data_points
+        for warning in w:
+            if "divide by zero encountered in divide" in str(warning.message):
+                Warn("Divide by zero encountered in ratio plot")    
+    ax.step(mc_centers, ratio, color=color, linestyle='-',where='mid')
+
+
 
 
 # ---------------------------------- Set up axes ----------------------------------
@@ -91,7 +122,7 @@ gs = gridspec.GridSpec(2, 1, height_ratios=[3, 1], hspace=0.05)
 ax_main = fig.add_subplot(gs[0])
 ax_ratio = fig.add_subplot(gs[1], sharex=ax_main)
 
-format_axis(ax_main, ax_ratio, r"$E_{m}$", "MeV", r"$\text{d}\sigma/\text{d}E_{m}$", r"cm$^{2}$ / MeV$^{2}$ proton", "")
+format_axis(ax_main, ax_ratio, r"$E_{m}$", "MeV", r"Normalised $\frac{1}{\sigma}\frac{\text{d}\sigma}{\text{d}E_{m}}$", r"1 / MeV proton", "")
 
 
 # ---------------------------------- Main plot ----------------------------------
@@ -99,13 +130,22 @@ format_axis(ax_main, ax_ratio, r"$E_{m}$", "MeV", r"$\text{d}\sigma/\text{d}E_{m
 plt.sca(ax_main)
 
 data_centers, data_contents, data_errors, bin_edges = plot_data_hist("kdar_analysis/kdar_emiss_hist.root")
-mc_centers, mc_contents = plot_flattree_diff_xsec("neutout/nuisflat_neut_5.4.0_JSPS_C.root", "NEUT", "red", bin_edges)
-mc_centers2, mc_contents2 = plot_flattree_diff_xsec("neutout/nuisflat_neut_5.4.0_JSPS_C_noFSI.root", "NEUT_noFSI", "blue", bin_edges)
-mc_centers3, mc_contents3 = plot_flattree_diff_xsec("neutout/nuisflat_NEUT_6.0.2_JSPS_EDRMF_nominal_shells_Nocascade.root", "NEUT 6.0.2 EDRMF noFSI", "orange", bin_edges)
-mc_centers4, mc_contents4 = plot_flattree_diff_xsec("neutout/nuisflat_NEUT_6.0.2_JSPS_EDRMF_nominal_shells_cascade.root", "NEUT 6.0.2 EDRMF", "purple", bin_edges)
 
-# plot_flattree_diff_xsec("neutout/nuisflat_NEUT_6.0.2_SF.root", "Emiss", "NEUT 6.0.2 SF $M_{A}^{QE} = 1.03$", "red", "--")
-# plot_flattree_diff_xsec("neutout/nuisflat_NEUT_6.0.2_SF_noFSI.root", "Emiss", "NEUT 6.0.2 SF noFSI $M_{A}^{QE} = 1.03$", "blue", "--")
+mc_samples = ["neutout/nuisflat_neut_5.4.0_JSPS_C.root", 
+              "neutout/nuisflat_neut_5.4.0_JSPS_C_noFSI.root",
+              "neutout/EDRMF/nuisflat_NEUT6_EDRMF_nominal_noFSI.root",
+              "neutout/EDRMF/nuisflat_NEUT6_EDRMF_nominal.root",]
+              # "neutout/EDRMF/nuisflat_NEUT_6.0.2_EDRMF_paperSFshells.root",]
+            #   "neutout/RPWIA/nuisflat_NEUT_6.0.2_RPWIA_nominal_noFSI.root",
+            #   "neutout/RPWIA/nuisflat_NEUT_6.0.2_RPWIA_nominal.root",
+            #   "neutout/EDAIC/nuisflat_NEUT_6.0.2_EDAIC_nominal_noFSI.root",
+            #   "neutout/EDAIC/nuisflat_NEUT_6.0.2_EDAIC_nominal.root",]
+mc_names   = ["NEUT", "NEUT noFSI", "NEUT6.0.2 EDRMF noFSI", "NEUT6.0.2 EDRMF",]#"NEUT6.0.2 EDRMF paper shells", "NEUT6.0.2 RPWIA noFSI", "NEUT6.0.2 RPWIA", "NEUT6.0.2 EDAIC noFSI", "NEUT6.0.2 EDAIC"]
+mc_colors  = ["red", "blue", "orange", "purple"]#,"green", "lime", "pink", "green", "brown"]
+
+for index, sample in enumerate(mc_samples):
+    Log(f"Reading in: {sample}")
+    makeMCplot(ax_ratio, sample, mc_names[index], mc_colors[index], data_contents, bin_edges)
 
 # ---------------------------------- Ratio plot ----------------------------------
 
@@ -114,34 +154,26 @@ mc_centers4, mc_contents4 = plot_flattree_diff_xsec("neutout/nuisflat_NEUT_6.0.2
 ## so we can get a ratio.
 # data_contents[0] = 1E-3
 # data_contents[1] = 1E-3
-
-ratio = mc_contents / data_contents
-ratio2 = mc_contents2 / data_contents
-ratio3 = mc_contents3 / data_contents
-ratio4 = mc_contents4 / data_contents
 ratio_errors = data_errors / data_contents  # relative error on data
 
-
-ax_ratio.step(data_centers, ratio, color='red', linestyle='-',where='mid')
-ax_ratio.step(data_centers, ratio2, color='blue', linestyle='-', where='mid')
-ax_ratio.step(data_centers, ratio3, color='orange', linestyle='-', where='mid')
-ax_ratio.step(data_centers, ratio4, color='purple', linestyle='-', where='mid')
 ax_ratio.axhline(1, color='black', linestyle='--')
 ax_ratio.set_ylabel("MC/Data", fontsize=13)
-# ax_ratio.set_ylim(0.5,1.5)
+ax_ratio.set_ylim(0,2)
 
 
 plt.setp(ax_main.get_xticklabels(), visible=False) 
-plt.show()
 
 
 ##################################
 # C12_Emiss_profile = np.loadtxt("rho_C12_neutron.txt")
+# C12_Emiss_profile = np.loadtxt("rho_C12_neutron_NEUTsf_EmShells.txt")
 # Em_n = C12_Emiss_profile[:,0]
 # rho_n = C12_Emiss_profile[:,1]
 # integral = np.trapz(rho_n, Em_n)
 # rho_n_scaled = 2*2.488923844830424 * rho_n / integral
 
-# plt.plot(Em_n, rho_n_scaled, color = 'red', label = r'Neutron total $\rho(E_{m})$')
-# plt.xlim(right=111.166899)
+# ax_main.plot(Em_n, rho_n_scaled, color = 'red', label = r'Neutron total $\rho(E_{m})$', linestyle='dashed')
+# ax_main.set_xlim(right=120)
 ###################################
+
+plt.show()
