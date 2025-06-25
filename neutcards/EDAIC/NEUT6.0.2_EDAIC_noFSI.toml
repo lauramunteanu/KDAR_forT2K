@@ -1,0 +1,131 @@
+
+[neut]
+rng_seed = "time"
+#cross_section_table_path = "/opt/neut/5.8.0/share/neut/crsdat"
+number_of_events = 10000
+verbosity = "quiet"
+# output_format = "neutroot"
+# output_format = "NuHepMC"
+[neut.interaction_model]
+mode_choice_type = "normal"
+#mode_choice_type = "rescaled"
+[neut.interaction_model.mode_rescaling]
+
+# quotes required for keys with +/- characters
+"CC_QE_nu" = 1.0
+"CC_2p2h_nu" = 0.0
+"CC_RES_ppi+_nu" = 0.0
+"CC_RES_ppi0_nu" = 0.0
+"CC_RES_npi+_nu" = 0.0
+"CC_COH_nu" = 0.0
+"CC_DIF_nu" = 0.0
+"CC_eta_nu" = 0.0
+"CC_kaon_nu" = 0.0
+"CC_1gamma_nu" = 0.0
+"CC_multi_pi_nu" = 0.0
+"CC_DIS_nu" = 0.0
+
+"NC_elastic_free_p_nu" = 0.0
+"NC_elastic_bound_p_nu" = 0.0
+"NC_elastic_n_nu" = 0.0
+"NC_RES_npi0_nu" = 0.0
+"NC_RES_ppi0_nu" = 0.0
+"NC_RES_ppi-_nu" = 0.0
+"NC_RES_npi+_nu" = 0.0
+"NC_COH_nu" = 0.0
+"NC_DIF_nu" = 0.0
+"NC_eta_n_nu" = 0.0
+"NC_eta_p_nu" = 0.0
+"NC_kaon_n_nu" = 0.0
+"NC_kaon_p_nu" = 0.0
+"NC_multi_pi_nu" = 0.0
+"NC_1gamma_n_nu" = 0.0
+"NC_1gamma_p_nu" = 0.0
+"NC_DIS_nu" = 0.0
+
+"CC_QE_free_proton_nubar" = 0.0
+"CC_QE_bound_proton_nubar" = 0.0
+"CC_2p2h_nubar" = 0.0
+"CC_RES_npi-_nubar" = 0.0
+"CC_RES_ppi0_nubar" = 0.0
+"CC_RES_ppi-_nubar" = 0.0
+"CC_COH_nubar" = 0.0
+"CC_DIF_nubar" = 0.0
+"CC_eta_nubar" = 0.0
+"CC_kaon_nubar" = 0.0
+"CC_1gamma_nubar" = 0.0
+"CC_multi_pi_nubar" = 0.0
+"CC_DIS_nubar" = 0.0
+
+"NC_elastic_free_p_nubar" = 0.0
+"NC_elastic_bound_p_nubar" = 0.0
+"NC_elastic_n_nubar" = 0.0
+"NC_RES_npi0_nubar" = 0.0
+"NC_RES_ppi0_nubar" = 0.0
+"NC_RES_ppi-_nubar" = 0.0
+"NC_RES_npi+_nubar" = 0.0
+"NC_COH_nubar" = 0.0
+"NC_DIF_nubar" = 0.0
+"NC_eta_n_nubar" = 0.0
+"NC_eta_p_nubar" = 0.0
+"NC_kaon_n_nubar" = 0.0
+"NC_kaon_p_nubar" = 0.0
+"NC_1gamma_n_nubar" = 0.0
+"NC_1gamma_p_nubar" = 0.0
+"NC_multi_pi_nubar" = 0.0
+"NC_DIS_nubar" = 0.0
+
+
+[neut.interaction_model.QE]
+#model = "nieves"
+#model = "rome"
+model = "rmf"
+
+[neut.interaction_model.QE.rmf]
+src_Emiss_cut = 300
+#potential = "rpwia"
+potential = "rop"
+#potential = "real-rop"
+#rmf_NN_pair_fraction = 0.05
+[neut.interaction_model.QE.axial_form_factors]
+
+[neut.interaction_model.QE.axial_form_factors.dipole]
+axial_mass = 1.03
+
+[neut.interaction_model.QE.vector_form_factors]
+#nc_form = "default"
+#cc_form = "BBBA05"
+#cc_form = "dipole"
+
+[neut.vertex]
+radius = 100.0
+position_type = "random"
+
+[neut.target]
+num_free_protons = 0
+num_bound_protons = 6
+num_nucleons = 12
+
+[neut.target.hadron_rescattering]
+nucleon_rescattering = "off"
+pion_rescattering = "off"
+
+
+[neut.probe]
+
+energy_spectrum_type = "fixed"
+#energy_spectrum_type = "root"
+#energy_histogram = [ "/home/jm721/Desktop/PhDWork/FirstYear/Minoo_Project/UCM_codes/NEUT/NEUT6_oxygen_tests/cutHistogram_o.root", "fluxhisto", "mev"]
+energy_mev = 235.5
+direction_type = "fixed"
+direction = [
+0.0,
+0.0,
+1.0,
+]
+species = "numu"
+
+#[neut.target.nuclear_effects]
+#pauli_blocking = "on"
+
+

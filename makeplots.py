@@ -546,13 +546,17 @@ def make_plots(inputDir):
     genList = [
                "data",
                "NEUT",
-               "NEUT_noFSI"
+               "NEUT_noFSI",
+               "NEUT_6.0.2_EDRMF",
+               "NEUT_6.0.2_EDRMF_noFSI"
               ]
     
     nameList = [
                 "data",
                 "NEUT",
-                "NEUT_noFSI" 
+                "NEUT_noFSI", 
+                "NEUT_6.0.2_EDRMF",
+                "NEUT_6.0.2_EDRMF_noFSI"
               ]
     
     colzList = [kkBlue, kkRed, kkCyan, kkTeal, kkOrange, kkGray]
@@ -561,6 +565,8 @@ def make_plots(inputDir):
     inFileList.append(inputDir+"/kdar_analysis/kdar_emiss_hist.root")
     inFileList.append(inputDir+"/neutout/nuisflat_neut_5.4.0_JSPS_C.root")
     inFileList.append(inputDir+"/neutout/nuisflat_neut_5.4.0_JSPS_C_noFSI.root")
+    inFileList.append(inputDir+"/neutout/nuisflat_NEUT_6.0.2_JSPS_EDRMF_nominal_shells_cascade.root")
+    inFileList.append(inputDir+"/neutout/nuisflat_NEUT_6.0.2_JSPS_EDRMF_nominal_shells_Nocascade.root")
     make_generator_comp("KDAR_forT2K.png", inFileList, nameList, colzList, Emiss, "25,-13.833100000000059,111.16689999999994", "cc==1", \
                                               "Emiss [GeV]; d#sigma/dEmiss) [cm^{2}/nucleon]", True)   
     print(inFileList)
@@ -569,6 +575,6 @@ def make_plots(inputDir):
             
 if __name__ == "__main__":
 
-    inputDir="/eos/home-l/lamuntea/KDAR_forT2K"
+    inputDir="/home/jm721/Desktop/PhDWork/FirstYear/Minoo_Project/Nuisance3_local/KDAR_forT2K"
     #make_T2K_W_plots(inputDir)
     make_plots(inputDir)
